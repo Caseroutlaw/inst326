@@ -16,50 +16,91 @@ def generate_ordered_prizes(prize_quantities):
             matrix_list.append(matrix)
     return matrix_list
 
-# Quantities for each prize
-prize_quantities = {1: 20, 2: 30, 3: 150, 4: 200}
+# Ask user to enter prize quantities
+prize_quantities = {}
+for i in range(1, 5):
+    while True:
+        try:
+            quantity = int(input(f"Enter quantity for prize {i}: "))
+            if quantity < 0:
+                raise ValueError("Quantity must be a positive integer.")
+            prize_quantities[i] = quantity
+            break
+        except ValueError as e:
+            print(e)
 
 # Generate prize matrices
 ordered_matrices = generate_ordered_prizes(prize_quantities)
 
 # Save matrices to a text file
-with open('ScratchOff1.txt', 'w') as file:
-    for matrix in ordered_matrices:
-        matrix_str = np.array2string(matrix, separator=', ')
-        file.write(matrix_str + "\n\n")
+while True:
+    try:
+        file_name = input("Enter file name to save matrices (include extension): ")
+        with open(file_name, 'w') as file:
+            for matrix in ordered_matrices:
+                matrix_str = np.array2string(matrix, separator=', ')
+                file.write(matrix_str + "\n\n")
+        break
+    except FileNotFoundError:
+        print("File not found. Please enter a valid file name.")
 
 # Load the template image
-template_path = 'E:\\Company\\Program\\ScratchOffTemplate1.png'
+while True:
+    template_path = input("Enter path for template image (e.g., D:\\images\\template.png): ")
+    if os.path.exists(template_path):
+        break
+    else:
+        print("File not found. Please enter a valid path.")
+
 template_image = Image.open(template_path)
 
 # Load saved matrices from the file
 matrices = []
-with open('ScratchOff1.txt', 'r') as file:
-    content = file.read()
-    matrices = [np.array(eval(matrix)) for matrix in content.strip().split('\n\n')]
+while True:
+    file_name = input("Enter file name to load matrices (include extension): ")
+    if os.path.exists(file_name):
+        with open(file_name, 'r') as file:
+            content = file.read()
+            matrices = [np.array(eval(matrix)) for matrix in content.strip().split('\n\n')]
+        break
+    else:
+        print("File not found. Please enter a valid file name.")
 
 # Define coordinates for the positions of the prizes
-positions = [
-    (230, 800), (430, 800), (630, 800), (830, 800),      # First row
-    (230, 990), (430, 990), (630, 990), (830, 990),      # Second row
-    (230, 1180), (430, 1180), (630, 1180), (830, 1180)   # Third row
-]
+positions = []
+for i in range(3):
+    for j in range(4):
+        while True:
+            try:
+                coordinate = input(f"Enter coordinates for prize at row {i+1} and column {j+1} (format: x,y): ")
+                x, y = map(int, coordinate.split(','))
+                positions.append((x, y))
+                break
+            except ValueError:
+                print("Invalid input format. Please enter coordinates in the format 'x,y'.")
+
 
 # Output folder
-output_folder = 'E:\\Company\\Program\\ScratchOffResults' # Change the path as needed
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
+while True:
+    output_folder = input("Enter output folder path: ")
+    if os.path.exists(output_folder):
+        break
+    else:
+        print("Folder not found. Please enter a valid folder path.")
 
 # Paths for prize images
-prizes_path = 'E:\\Company\\Program\\'
-prize_images = {
-    0: Image.open(os.path.join(prizes_path, '0.png')),  # Non-winning prize image
-    1: Image.open(os.path.join(prizes_path, '1.png')),  # First prize image
-    2: Image.open(os.path.join(prizes_path, '2.png')),  # Second prize image
-    3: Image.open(os.path.join(prizes_path, '3.png')),  # Third prize image
-    4: Image.open(os.path.join(prizes_path, '4.png')),  # Fourth prize image
-    # Add other prize images as needed by copying and modifying the above lines
-}
+prizes_path = input("Enter path for prize images: ")
+while not os.path.exists(prizes_path):
+    print("Folder not found. Please enter a valid folder path.")
+    prizes_path = input("Enter path for prize images: ")
+
+prize_images = {}
+for i in range(5):
+    image_path = input(f"Enter path for prize image {i}: ")
+    while not os.path.exists(image_path):
+        print("File not found. Please enter a valid file path.")
+        image_path = input(f"Enter path for prize image {i}: ")
+    prize_images[i] = Image.open(image_path)
 
 # Generate and save images
 for index, matrix in enumerate(matrices):
