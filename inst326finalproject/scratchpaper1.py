@@ -1,110 +1,144 @@
 import numpy as np
 import os
 
-# Function to generate a matrix for scratch-off rewards
-def generate_ordered_prizes(prize_quantities):
-    matrix_list = []
-    rows, cols = 3, 4
-    total_positions = rows * cols
+"""
+Generate scratch-off cards with different prizes based on what the company wants
+
+    Attributes:
+        cost (float): The cost of a single scratch card that the user can change in the command line
+        num_cards (int): The number of scratch cards to generate
+        prize_stats (dict): Tracks the count of each prize that won
+        prize_values (dict): Count of prize money depending on the type that won
+        probabilities (list of floats): probability of the prize winning
+        matrices (list): Stores generated matrices that are scratch cards
+"""
+class ScratchOffGenerator:
+    #initializer
+    def __init__(self, cost, num_cards):
+        self.cost = cost
+        self.num_cards = num_cards
+
+        #dictionary to track how many of each prize has been won
+        self.prize_stats = {'No Prize': 0, 'Baby Prize': 0, 'Prize': 0, 'Small Prize': 0, 'Medium Prize': 0, 'Big Prize': 0, 'JACKPOT': 0, 'total_won': 0}
+
+        #prize winnings depending on cost
+        self.prize_values = {
+            'No Prize': 0,
+            'Baby Prize': int(0.5 * cost), 
+            'Prize': cost,                  
+            'Small Prize': int(1.5 * cost),
+            'Medium Prize': int(3 * cost),
+            'Big Prize': int(20 * cost),
+            'JACKPOT': int(2000 * cost)
+        }
+
+        #probabilities of winning each prize, can change values depending on what the company wants the odds to be
+        self.probabilities = [
+            ('No Prize', 0.51),
+            ('Baby Prize', 0.20),
+            ('Prize', 0.15019),
+            ('Small Prize', 0.08),
+            ('Medium Prize', 0.05),
+            ('Big Prize', 0.0098),
+            ('JACKPOT', 0.00001)
+        ]
+        #list to store generated scratch offs
+        self.matrices = []
+
+    """
+    Generates a scratch off matrix with a random prize(or no prize :OOOO)
+
+    Returns:
+        matrix: A 2D array representing the scratch off ticket  
+"""
+    def generate_prize_matrix(self):
+        rows = 3
+        col = 4
+
+        #fills matrix with zeroes
+        matrix = np.zeros((rows, col), dtype=int)
+
+        #randomly selects row and col to put prize in
+        random_row = np.random.randint(rows)
+        random_col = np.random.randint(col)
+
+        #unpacks prize types based on the probabilities given earlier
+        zipped_probabilities = zip(*self.probabilities)
+        prizes, probabilities = list(zipped_probabilities)
+
+        #Chooses prize 
+        prize_level = np.random.choice(prizes, p=probabilities)
+
+        #puts prize in the random row and col
+        matrix[random_row, random_col] = self.prize_values[prize_level]
+
+        #for statistics adds one for the prize won
+        self.prize_stats['total_won'] += self.prize_values[prize_level]
+        self.prize_stats[prize_level] += 1
+        return matrix
     
-    for prize, quantity in prize_quantities.items():
-        for _ in range(quantity):
-            position = len(matrix_list) % total_positions
-            matrix = np.zeros((rows, cols), dtype=int)
-            matrix[position // cols, position % cols] = prize
-            matrix_list.append(matrix)
-    return matrix_list
+    #Generates number of matrices depending on how many user wants
+    def generate_matrices(self):
+        for _ in range(self.num_cards):
+            self.matrices.append(self.generate_prize_matrix())
 
-# Ask user to enter prize quantities
-prize_quantities = {}
-for i in range(1, 5):
-    while True:
-        try:
-            quantity = int(input(f"Enter quantity for prize {i}: "))
-            if quantity < 0:
-                raise ValueError("Quantity must be a positive integer.")
-            prize_quantities[i] = quantity
-            break
-        except ValueError as e:
-            print(e)
-
-# Generate prize matrices
-ordered_matrices = generate_ordered_prizes(prize_quantities)
-
-# Save matrices to a text file
-while True:
-    try:
-        file_name = input("Enter file name to save matrices (include extension): ")
+    #Saves matrices to scrathoffs.txt
+    def save_matrices(self, file_name):
         with open(file_name, 'w') as file:
-            for matrix in ordered_matrices:
+            for matrix in self.matrices:
                 matrix_str = np.array2string(matrix, separator=', ')
                 file.write(matrix_str + "\n\n")
-        break
-    except FileNotFoundError:
-        print("File not found. Please enter a valid file name.")
 
+    """Prompts user for input making sure that it meets the right conditions
 
-# Load saved matrices from the file
-matrices = []
-while True:
-    file_name = input("Enter file name to load matrices (include extension): ")
-    if os.path.exists(file_name):
-        with open(file_name, 'r') as file:
-            content = file.read()
-            matrices = [np.array(eval(matrix)) for matrix in content.strip().split('\n\n')]
-        break
-    else:
-        print("File not found. Please enter a valid file name.")
+    Args:
+        prompt (str): Displays prompt
+        cast_type (float): type of input the user can put in
+        condition (function): A function to validate the input
 
-# Define coordinates for the positions of the prizes
-positions = []
-for i in range(3):
-    for j in range(4):
-        while True:
-            try:
-                coordinate = input(f"Enter coordinates for prize at row {i+1} and column {j+1} (format: x,y): ")
-                x, y = map(int, coordinate.split(','))
-                positions.append((x, y))
-                break
-            except ValueError:
-                print("Invalid input format. Please enter coordinates in the format 'x,y'.")
+    Returns:
+        user input
+    """
+def get_user_input(prompt, cast_type=float, condition=None):
+    while True:
+        try:
+            value = cast_type(input(prompt))
+            if condition and not condition(value):
+                raise ValueError
+            return value
+        except ValueError:
+            print("Invalid input, please try again.")
 
+"""
+    Main function to start the process of generating scratch cards and prints the results
+    """
+def main():
+    #Gets number of scratch cards to generate and the cost of each card
+    num_cards = get_user_input("Enter the number of scratch cards to generate (1-100000): ", int, lambda x: 1 <= x <= 100000)
+    cost = get_user_input("Enter the cost of each scratch card: ", float, lambda x: x > 0)
 
-# Output folder
-while True:
-    output_folder = input("Enter output folder path: ")
-    if os.path.exists(output_folder):
-        break
-    else:
-        print("Folder not found. Please enter a valid folder path.")
+    #initializes the scratch card with user input
+    scratch_off = ScratchOffGenerator(cost, num_cards)
+    scratch_off.generate_matrices()
+    
+    #seperate file that is generated
+    output_file_name = 'scratchoffs.txt'
+    scratch_off.save_matrices(output_file_name)
+    
+    #prints results for user to see
+    print(f'{num_cards} random scratch-off matrices have been generated and saved successfully in "{output_file_name}".')
+    print(f'Total Spent: ${num_cards * cost:.2f}')
+    print(f'Total Won: ${scratch_off.prize_stats["total_won"]:.2f}')
+    print('Prizes breakdown:')
 
-# Paths for prize images
-prizes_path = input("Enter path for prize images: ")
-while not os.path.exists(prizes_path):
-    print("Folder not found. Please enter a valid folder path.")
-    prizes_path = input("Enter path for prize images: ")
+    for prize_name in ['No Prize', 'Baby Prize', 'Prize', 'Small Prize', 'Medium Prize', 'Big Prize', 'JACKPOT']:
+        #calculates percentage of each prize won
+        if scratch_off.prize_stats[prize_name] > 0:
+            percentage = (scratch_off.prize_stats[prize_name] / num_cards) * 100
+        else:
+            percentage = 0
+        prize_money = scratch_off.prize_stats[prize_name] * scratch_off.prize_values[prize_name]
+        print(f'  {prize_name}: {scratch_off.prize_stats[prize_name]} times (${prize_money}) ({percentage:.2f}%)')
 
-prize_images = {}
-for i in range(5):
-    image_path = input(f"Enter path for prize image {i}: ")
-    while not os.path.exists(image_path):
-        print("File not found. Please enter a valid file path.")
-        image_path = input(f"Enter path for prize image {i}: ")
-    prize_images[i] = Image.open(image_path)
-
-# Generate and save images
-for index, matrix in enumerate(matrices):
-    edited_image = template_image.copy()
-    for i, row in enumerate(matrix):
-        for j, prize in enumerate(row):
-            if prize >= 0:  # Assuming 0 is also a valid prize
-                prize_image = prize_images[prize]
-                x, y = positions[i * len(row) + j]
-                # Ensure the prize image fits the template position, may need to adjust the size
-                prize_image = prize_image.resize((130, 115))  # Assuming size is 80x80
-                edited_image.paste(prize_image, (x, y), prize_image)
-
-    output_path = os.path.join(output_folder, f'ScratchOff_{index+1}.png')
-    edited_image.save(output_path)
-
-print('All scratch-off images have been generated successfully.')
+if __name__ == "__main__":
+    main()
