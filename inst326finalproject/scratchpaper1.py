@@ -1,5 +1,4 @@
 import numpy as np
-from PIL import Image
 import os
 
 # Function to generate a matrix for scratch-off rewards
@@ -44,15 +43,6 @@ while True:
     except FileNotFoundError:
         print("File not found. Please enter a valid file name.")
 
-# Load the template image
-while True:
-    template_path = input("Enter path for template image (e.g., D:\\images\\template.png): ")
-    if os.path.exists(template_path):
-        break
-    else:
-        print("File not found. Please enter a valid path.")
-
-template_image = Image.open(template_path)
 
 # Load saved matrices from the file
 matrices = []
